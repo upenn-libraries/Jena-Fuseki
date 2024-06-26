@@ -1,0 +1,87 @@
+include:
+  - project: "devops/gitlab/ci-templates/docker"
+    ref: "1.0.0"
+    file:
+      - ".amend_manifests.yml"
+      - ".build_and_push_docker_images.yml"
+      - ".copy_docker_images.yml"
+      - ".remove_tmp_registry.yml"
+  - project: "devops/gitlab/ci-templates/sast"
+    ref: "master"
+    file:
+      - ".trivy_container_scanning.yml"
+
+stages:
+  - build_and_push
+  - amend_tmp_image
+  - sast
+  - copy_docker_images
+  - remove_tmp_registry
+
+build_and_push_image:
+  stage: build_and_push
+  extends:
+    - .build_and_push_docker_images
+  parallel:
+    matrix:
+      - RUNNER: build-arm
+        DOCKER_BUILD_PLATFORM: "linux/arm64"
+      - RUNNER: build
+        DOCKER_BUILD_PLATFORM: "linux/amd64"
+  before_script:
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+  variables:
+    REGISTRY_REPOSITORY: "${CI_PIPELINE_ID}"
+  tags:
+    - ${RUNNER}
+
+amend_tmp_image:
+  stage: amend_tmp_image
+  extends:
+    - .amend_manifests
+  needs:
+    - build_and_push_image
+  variables:
+    REGISTRY_REPOSITORY: "${CI_PIPELINE_ID}"
+  tags:
+    - build
+
+trivy_image_scan:
+  stage: sast
+  extends:
+    - .trivy_container_scanning
+  before_script:
+    - apk add --no-cache docker
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+  after_script:
+    - docker logout ${CI_REGISTRY}
+  needs:
+    - amend_tmp_image
+  variables:
+    CI_IMAGE_NAME: ${CI_REGISTRY_IMAGE}/${CI_PIPELINE_ID}:${CI_COMMIT_SHORT_SHA}
+  allow_failure: true
+  tags:
+    - build
+
+copy_docker_image:
+  stage: copy_docker_images
+  variables:
+    ORIGINAL_REGISTRY_REPOSITORY: "${CI_PIPELINE_ID}"
+  needs:
+    - trivy_image_scan
+  extends:
+    - .copy_docker_images
+  tags:
+    - build
+
+remove_tmp_registry:
+  stage: remove_tmp_registry
+  extends:
+    - .remove_tmp_registry
+  rules:
+    - when: always
+  needs:
+    - copy_docker_image
+  allow_failure: true
+  tags:
+    - build
