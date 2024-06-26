@@ -1,5 +1,3 @@
-FROM eclipse-temurin:17-jre-alpine
-
 FROM ubuntu:24.04
 
 ENV ASF_ARCHIVE="https://archive.apache.org/dist/"
@@ -11,17 +9,20 @@ ENV FUSEKI_SHA512="62ac07f70c65a77fb90127635fa82f719fd5f4f10339c32702ebd664227d7
 ENV FUSEKI_VERSION="3.14.0"
 ENV JRE_PACKAGE="openjdk-11-jre"
 ENV LANG="C.UTF-8"
+ENV YASR_VERSION="2.6.5"
 
 WORKDIR /tmp
 
 COPY . /tmp
+
 RUN mv docker-entrypoint.sh / && \
     mkdir -p $FUSEKI_HOME && \
     mv * $FUSEKI_HOME/ && \
     chmod 755 /docker-entrypoint.sh \
       $FUSEKI_HOME/load.sh \
       $FUSEKI_HOME/tdbloader \
-      $FUSEKI_HOME/tdbloader2
+      $FUSEKI_HOME/tdbloader2 && \
+    echo "$FUSEKI_SHA512  fuseki.tar.gz" > fuseki.tar.gz.sha512
 
 RUN apt-get update && \
     apt-get install -y \
@@ -36,8 +37,6 @@ RUN apt-get update && \
       tini && \
     apt-get clean
 
-RUN echo "$FUSEKI_SHA512  fuseki.tar.gz" > fuseki.tar.gz.sha512
-
 RUN (curl --location --silent --show-error --fail --retry-connrefused --retry 3 --output fuseki.tar.gz ${ASF_MIRROR}jena/binaries/apache-jena-fuseki-$FUSEKI_VERSION.tar.gz || \
     curl --fail --silent --show-error --retry-connrefused --retry 3 --output fuseki.tar.gz $ASF_ARCHIVE/jena/binaries/apache-jena-fuseki-$FUSEKI_VERSION.tar.gz) && \
     sha512sum -c fuseki.tar.gz.sha512 && \
@@ -47,13 +46,17 @@ RUN (curl --location --silent --show-error --fail --retry-connrefused --retry 3 
 
 WORKDIR $FUSEKI_HOME
 
+ADD https://cdnjs.cloudflare.com/ajax/libs/yasr/${YASR_VERSION}/yasr.min.js $FUSEKI_HOME/webapp/js/lib/
+
 RUN rm -rf fuseki.war && \
+    mv qonsole-config.js webapp/js/app && \
+    mv dataset.html webapp && \
     chmod 755 fuseki-server
 
 # Test the install by testing it's ping resource. 20s sleep because Docker Hub.
 RUN ./fuseki-server & \
     sleep 20 && \
-    curl -sS --fail 'http://localhost:3030/$/ping' 
+    curl -sS --fail 'http://localhost:3030/$/ping'
 
 # Create a fuseki user and group
 RUN addgroup --system fuseki && \

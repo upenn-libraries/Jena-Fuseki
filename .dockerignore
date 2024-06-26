@@ -2,4 +2,5 @@
 .git*
 .pipeline.yml
 Dockerfile
+jena.env.example
 README.md
