@@ -75,5 +75,5 @@ RUN mkdir -p $FUSEKI_BASE; \
 EXPOSE 3030
 USER fuseki
 
-ENTRYPOINT ["/sbin/tini", "--", "sh", "/docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/tini", "--", "sh", "/docker-entrypoint.sh"]
 CMD ["/jena-fuseki/fuseki-server"]
