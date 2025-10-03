@@ -1,51 +1,51 @@
 ---
-# include:
-  # - template: Jobs/Secret-Detection.gitlab-ci.yml
+include:
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
 
 stages:
-  # - secret_check
+  - secret_check
   - main_pipeline
 
-# secret_detection:
-#   stage: secret_check
-#   allow_failure: false
-#   artifacts:
-#     paths:
-#       - .pipeline.yml
-#       - gl-secret-detection-report.json
-#     reports:
-#       secret_detection: gl-secret-detection-report.json
-#     expire_in: 1 day
-#   tags:
-#     - deploy
+secret_detection:
+  stage: secret_check
+  allow_failure: false
+  artifacts:
+    paths:
+      - .pipeline.yml
+      - gl-secret-detection-report.json
+    reports:
+      secret_detection: gl-secret-detection-report.json
+    expire_in: 1 day
+  tags:
+    - deploy
 
-#This job fails when secrets are detected in the repo.
-# validate_secret:
-#   stage: secret_check
-#   allow_failure: false
-#   needs:
-#     - secret_detection
-#   script:
-#     - apk add jq
-#     - export VULNERABILTIES=$(jq .vulnerabilities[0] gl-secret-detection-report.json)
-#     - |
-#       if [ "$VULNERABILTIES" != "null" ]
-#       then
-#         exit 1
-#       fi
-#   tags:
-#     - deploy
+# This job fails when secrets are detected in the repo.
+validate_secret:
+  stage: secret_check
+  allow_failure: false
+  needs:
+    - secret_detection
+  script:
+    - apk add jq
+    - export VULNERABILTIES=$(jq .vulnerabilities[0] gl-secret-detection-report.json)
+    - |
+      if [ "$VULNERABILTIES" != "null" ]
+      then
+        exit 1
+      fi
+  tags:
+    - deploy
 
 main:
   stage: main_pipeline
-  # needs:
-  #   - secret_detection
+  needs:
+    - secret_detection
   allow_failure: false
-  # trigger:
-  #   include:
-  #     - artifact: .pipeline.yml
-  #       job: secret_detection
-  #   strategy: depend
+  trigger:
+    include:
+      - artifact: .pipeline.yml
+        job: secret_detection
+    strategy: depend
   rules:
     - if: "$CI_MERGE_REQUEST_IID"
     - if: "$CI_COMMIT_TAG"
