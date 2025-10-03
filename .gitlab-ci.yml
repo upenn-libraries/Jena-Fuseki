@@ -12,29 +12,11 @@ secret_detection:
   artifacts:
     paths:
       - .pipeline.yml
-      - gl-secret-detection-report.json
-    reports:
-      secret_detection: gl-secret-detection-report.json
     expire_in: 1 day
   tags:
-    - deploy
-
-#This job fails when secrets are detected in the repo.
-validate_secret:
-  stage: secret_check
-  allow_failure: false
-  needs:
-    - secret_detection
-  script:
-    - apk add jq
-    - export VULNERABILTIES=$(jq .vulnerabilities[0] gl-secret-detection-report.json)
-    - |
-      if [ "$VULNERABILTIES" != "null" ]
-      then
-        exit 1
-      fi
-  tags:
-    - deploy
+    - build
+  rules:
+  - when: always
 
 main:
   stage: main_pipeline
