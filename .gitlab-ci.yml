@@ -29,6 +29,5 @@ main:
         job: secret_detection
     strategy: depend
   rules:
-    - if: "$CI_MERGE_REQUEST_IID"
     - if: "$CI_COMMIT_TAG"
     - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"

@@ -68,9 +68,12 @@ RUN chown -R fuseki:fuseki $FUSEKI_HOME
 # Make sure we start with empty /fuseki
 RUN mkdir -p $FUSEKI_BASE; \
     rm -rf $FUSEKI_BASE/*; \
+    mkdir $FUSEKI_BASE/configuration; \
     chown -R fuseki:fuseki $FUSEKI_BASE
 
     VOLUME $FUSEKI_BASE
+
+COPY sdbm.ttl $FUSEKI_BASE/configuration/
 
 EXPOSE 3030
 USER fuseki
