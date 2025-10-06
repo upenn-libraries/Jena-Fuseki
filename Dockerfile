@@ -73,8 +73,6 @@ RUN mkdir -p $FUSEKI_BASE; \
 
     VOLUME $FUSEKI_BASE
 
-COPY sdbm.ttl $FUSEKI_BASE/configuration/
-
 EXPOSE 3030
 USER fuseki
 
