@@ -33,7 +33,7 @@ if [ ! -f "$FUSEKI_BASE/shiro.ini" ] ; then
 fi
 
 if [ -d "/fuseki-extra" ] && [ ! -d "$FUSEKI_BASE/extra" ] ; then
-  ln -s "/fuseki-extra" "$FUSEKI_BASE/extra" 
+  ln -s "/fuseki-extra" "$FUSEKI_BASE/extra"
 fi
 
 # $ADMIN_PASSWORD only modifies if ${ADMIN_PASSWORD}
@@ -45,11 +45,11 @@ if [ -n "$ADMIN_PASSWORD" ] ; then
   export ADMIN_PASSWORD
 fi
 
-# fork 
+# fork
 exec "$@" &
 
 TDB_VERSION=''
-if [ ! -z ${TDB+x} ] && [ "${TDB}" = "2" ] ; then 
+if [ ! -z ${TDB+x} ] && [ "${TDB}" = "2" ] ; then
   TDB_VERSION='tdb2'
 else
   TDB_VERSION='tdb'
