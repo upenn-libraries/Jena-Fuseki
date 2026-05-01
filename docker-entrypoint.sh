@@ -16,40 +16,33 @@
 
 set -e
 
-if [ ! -f "$FUSEKI_BASE/shiro.ini" ] ; then
-  # First time
-  echo "###################################"
-  echo "Initializing Apache Jena Fuseki"
-  echo ""
-  cp "$FUSEKI_HOME/shiro.ini" "$FUSEKI_BASE/shiro.ini"
-  if [ -z "$ADMIN_PASSWORD" ] ; then
-    ADMIN_PASSWORD=$(pwgen -s 15)
-    echo "Randomly generated admin password:"
-    echo ""
-    echo "admin=$ADMIN_PASSWORD"
-  fi
-  echo ""
-  echo "###################################"
+if [ -z "$ADMIN_PASSWORD" ] ; then
+  echo "ERROR: ADMIN_PASSWORD is required" >&2
+  exit 1
 fi
+
+echo "###################################"
+echo "Initializing Apache Jena Fuseki"
+echo ""
+cp "$FUSEKI_HOME/shiro.ini" "$FUSEKI_BASE/shiro.ini"
+echo ""
+echo "###################################"
+
+export ADMIN_PASSWORD
+envsubst '${ADMIN_PASSWORD}' < "$FUSEKI_BASE/shiro.ini" > "$FUSEKI_BASE/shiro.ini.$$"
+cmp -s "$FUSEKI_BASE/shiro.ini" "$FUSEKI_BASE/shiro.ini.$$" && \
+  { echo "ERROR: \${ADMIN_PASSWORD} placeholder not found in $FUSEKI_HOME/shiro.ini" >&2; rm "$FUSEKI_BASE/shiro.ini.$$"; exit 1; }
+mv "$FUSEKI_BASE/shiro.ini.$$" "$FUSEKI_BASE/shiro.ini"
 
 if [ -d "/fuseki-extra" ] && [ ! -d "$FUSEKI_BASE/extra" ] ; then
-  ln -s "/fuseki-extra" "$FUSEKI_BASE/extra" 
+  ln -s "/fuseki-extra" "$FUSEKI_BASE/extra"
 fi
 
-# $ADMIN_PASSWORD only modifies if ${ADMIN_PASSWORD}
-# is in shiro.ini
-if [ -n "$ADMIN_PASSWORD" ] ; then
-  export ADMIN_PASSWORD
-  envsubst '${ADMIN_PASSWORD}' < "$FUSEKI_BASE/shiro.ini" > "$FUSEKI_BASE/shiro.ini.$$" && \
-    mv "$FUSEKI_BASE/shiro.ini.$$" "$FUSEKI_BASE/shiro.ini"
-  export ADMIN_PASSWORD
-fi
-
-# fork 
+# fork
 exec "$@" &
 
 TDB_VERSION=''
-if [ ! -z ${TDB+x} ] && [ "${TDB}" = "2" ] ; then 
+if [ ! -z ${TDB+x} ] && [ "${TDB}" = "2" ] ; then
   TDB_VERSION='tdb2'
 else
   TDB_VERSION='tdb'
