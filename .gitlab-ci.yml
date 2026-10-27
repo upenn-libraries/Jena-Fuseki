@@ -1,33 +1,44 @@
 ---
+variables:
+  FF_SCRIPT_SECTIONS: "true"
+  GIT_CLONE_PATH: "${CI_BUILDS_DIR}/${CI_JOB_ID}/${CI_PIPELINE_ID}/${CI_PROJECT_NAME}"
+
 include:
-  - template: Jobs/Secret-Detection.gitlab-ci.yml
+  - component: $CI_SERVER_FQDN/devops/gitlab/components/sast/secret_scan@~latest
+  - component: $CI_SERVER_FQDN/devops/gitlab/components/docker/stage_build@~latest
+    inputs:
+      ci_requirements_file: ".gitlab/ci-requirements.yml"
+      image_tags: >-
+        ${IMAGE_TAG_LATEST} ${CI_COMMIT_TAG} ${CI_COMMIT_REF_SLUG} ${CI_COMMIT_SHA}
+        ${CI_COMMIT_SHORT_SHA} ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
+        ${CI_COMMIT_SHORT_SHA}-${CI_PIPELINE_ID}
+      needs_build:
+        - secret_detection
+  - component: $CI_SERVER_FQDN/devops/gitlab/components/sast/trivy@~latest
+    inputs:
+      ci_requirements_file: ".gitlab/ci-requirements.yml"
+      needs:
+        - "amend_manifest"
+      stage: "test"
+  - component: $CI_SERVER_FQDN/devops/gitlab/components/docker/stage_finalize@~latest
+    inputs:
+      ci_requirements_file: ".gitlab/ci-requirements.yml"
+      needs_copy:
+        - trivy_scan
 
 stages:
   - secret_check
-  - main_pipeline
+  - build
+  - test
+  - finalize
 
-secret_detection:
-  stage: secret_check
-  allow_failure: false
-  artifacts:
-    paths:
-      - .pipeline.yml
-    expire_in: 1 day
-  tags:
-    - build
+# sdbmss's jena role pulls :latest, so only main and tags may move it.
+.latest_on_main_and_tags: &latest_on_main_and_tags
   rules:
-  - when: always
+    - if: $CI_COMMIT_TAG || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      variables:
+        IMAGE_TAG_LATEST: "latest"
+    - when: on_success
 
-main:
-  stage: main_pipeline
-  needs:
-    - secret_detection
-  allow_failure: false
-  trigger:
-    include:
-      - artifact: .pipeline.yml
-        job: secret_detection
-    strategy: depend
-  rules:
-    - if: "$CI_COMMIT_TAG"
-    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
+build_and_push_docker_images: *latest_on_main_and_tags
+amend_manifest: *latest_on_main_and_tags
