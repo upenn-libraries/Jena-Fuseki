@@ -17,7 +17,9 @@ include:
     inputs:
       ci_requirements_file: ".gitlab/ci-requirements.yml"
       needs:
-        - "amend_manifest"
+        - "build_and_push_docker_images"
+        - job: "amend_manifest"
+          optional: true
       stage: "test"
   - component: $CI_SERVER_FQDN/devops/gitlab/components/docker/stage_finalize@~latest
     inputs:
@@ -32,12 +34,11 @@ stages:
   - finalize
 
 # sdbmss's jena role pulls :latest, so only main and tags may move it.
-.latest_on_main_and_tags: &latest_on_main_and_tags
+workflow:
   rules:
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
     - if: $CI_COMMIT_TAG || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       variables:
         IMAGE_TAG_LATEST: "latest"
-    - when: on_success
-
-build_and_push_docker_images: *latest_on_main_and_tags
-amend_manifest: *latest_on_main_and_tags
+    - when: always
