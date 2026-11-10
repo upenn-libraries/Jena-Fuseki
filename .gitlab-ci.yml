@@ -18,8 +18,6 @@ include:
       ci_requirements_file: ".gitlab/ci-requirements.yml"
       needs:
         - "build_and_push_docker_images"
-        - job: "amend_manifest"
-          optional: true
       stage: "test"
   - component: $CI_SERVER_FQDN/devops/gitlab/components/docker/stage_finalize@~latest
     inputs:
